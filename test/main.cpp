@@ -96,17 +96,17 @@ TEST_F(ExpectedTestAware, ctor) {
 
 TEST_F(ExpectedTestAware, unexpected) {
     {
-        Expected<Aware> v = makeUnexpected<Aware>("unexpected");
+        Expected<Aware> v = makeUnexpected("unexpected");
         EXPECT_FALSE(bool(v));
         EXPECT_EQ("unexpected", v.error());
     }
     {
-        Expected<Aware, std::wstring> v = makeUnexpected<Aware>(L"unexpected");
+        Expected<Aware, std::wstring> v = makeUnexpected(L"unexpected");
         EXPECT_FALSE(bool(v));
         EXPECT_EQ(L"unexpected", v.error());
     }
     {
-        Expected<Aware, int> v(makeUnexpected<Aware>(0));
+        Expected<Aware, int> v(makeUnexpected(0));
         EXPECT_FALSE(bool(v));
     }
     EXPECT_FALSE(getState());
@@ -123,7 +123,7 @@ TEST_F(ExpectedTestAware, copyCtor) {
     }
     {
         getState() = false;
-        Expected<Aware, int> v(makeUnexpected<Aware>(0));
+        Expected<Aware, int> v(makeUnexpected(0));
         Expected<Aware, int> vc(v);
         EXPECT_FALSE(bool(vc));
         EXPECT_FALSE(getState());
@@ -141,7 +141,7 @@ TEST_F(ExpectedTestAware, moveCtor) {
     }
     {
         getState() = false;
-        Expected<Aware, int> v(makeUnexpected<Aware>(0));
+        Expected<Aware, int> v(makeUnexpected(0));
         Expected<Aware, int> vc(std::move(v));
         EXPECT_FALSE(bool(vc));
         EXPECT_FALSE(getState());
@@ -160,8 +160,8 @@ TEST_F(ExpectedTestAware, copyAssign) {
     }
     {
         getState() = false;
-        Expected<Aware, int> v(makeUnexpected<Aware>(0));
-        Expected<Aware, int> vc(makeUnexpected<Aware>(0));
+        Expected<Aware, int> v(makeUnexpected(0));
+        Expected<Aware, int> vc(makeUnexpected(0));
         EXPECT_FALSE(bool(v));
         EXPECT_FALSE(bool(vc));
         vc = v;
@@ -170,7 +170,7 @@ TEST_F(ExpectedTestAware, copyAssign) {
     }
     {
         getState() = false;
-        Expected<Aware, int> v(makeUnexpected<Aware>(0));
+        Expected<Aware, int> v(makeUnexpected(0));
         Expected<Aware, int> vc(getState());
         EXPECT_TRUE(bool(vc));
         vc = v;
@@ -196,8 +196,8 @@ TEST_F(ExpectedTestAware, moveAssign) {
     }
     {
         getState() = false;
-        Expected<Aware, int> v(makeUnexpected<Aware>(0));
-        Expected<Aware, int> vc(makeUnexpected<Aware>(0));
+        Expected<Aware, int> v(makeUnexpected(0));
+        Expected<Aware, int> vc(makeUnexpected(0));
         EXPECT_FALSE(bool(v));
         EXPECT_FALSE(bool(vc));
         vc = std::move(v);
@@ -206,7 +206,7 @@ TEST_F(ExpectedTestAware, moveAssign) {
     }
     {
         getState() = false;
-        Expected<Aware, int> v(makeUnexpected<Aware>(0));
+        Expected<Aware, int> v(makeUnexpected(0));
         Expected<Aware, int> vc(getState());
         EXPECT_TRUE(bool(vc));
         vc = std::move(v);
@@ -285,14 +285,14 @@ TEST_F(ExpectedTestAware, assignUnexpected) {
     EXPECT_TRUE(bool(a));
     EXPECT_TRUE(getState().ctor);
     EXPECT_FALSE(getState().dtor);
-    a = makeUnexpected<Aware>("");
+    a = makeUnexpected("");
     EXPECT_FALSE(bool(a));
     EXPECT_TRUE(getState().dtor);
 }
 
 TEST_F(ExpectedTestAware, emplace) {
     {
-        Expected<Aware, int> a(makeUnexpected<Aware>(0));
+        Expected<Aware, int> a(makeUnexpected(0));
         EXPECT_FALSE(bool(a));
         a.emplace(getState());
         EXPECT_TRUE(bool(a));
@@ -316,8 +316,8 @@ TEST_F(ExpectedTestAware, swap) {
         EXPECT_EQ(*b, "A");
     }
     {
-        Expected<std::string> a(makeUnexpected<std::string>("A"));
-        Expected<std::string> b(makeUnexpected<std::string>("B"));
+        Expected<std::string> a(makeUnexpected("A"));
+        Expected<std::string> b(makeUnexpected("B"));
         std::swap(a, b);
         EXPECT_FALSE(bool(a));
         EXPECT_FALSE(bool(b));
@@ -326,7 +326,7 @@ TEST_F(ExpectedTestAware, swap) {
     }
     {
         Expected<std::string> a("A");
-        Expected<std::string> b(makeUnexpected<std::string>("unexpected"));
+        Expected<std::string> b(makeUnexpected("unexpected"));
         std::swap(a, b);
         EXPECT_FALSE(bool(a));
         EXPECT_TRUE(bool(b));
@@ -335,7 +335,7 @@ TEST_F(ExpectedTestAware, swap) {
     }
     {
         Expected<std::string> a("A");
-        Expected<std::string> b(makeUnexpected<std::string>("unexpected"));
+        Expected<std::string> b(makeUnexpected("unexpected"));
         std::swap(b, a);
         EXPECT_FALSE(bool(a));
         EXPECT_TRUE(bool(b));
@@ -360,7 +360,7 @@ TEST(ExpectedTest, BadExpectedAccess) {
         EXPECT_THROW(v.error(), BadExpectedAccess);
     }
     {
-        Expected<int> v(makeUnexpected<int>(""));
+        Expected<int> v(makeUnexpected(""));
         EXPECT_THROW(v.value(), BadExpectedAccess);
     }
 }
@@ -374,12 +374,12 @@ TEST_F(ExpectedTestAware, moveFrom) {
 TEST(ExpectedTest, valueOr) {
     Expected<int> a(5);
     EXPECT_EQ(5, a.valueOr(3));
-    a = makeUnexpected<int>("");
+    a = makeUnexpected("");
     EXPECT_EQ(3, a.valueOr(3));
 }
 
 TEST(ExpectedTest, equality) {
-    Expected<int> oN(makeUnexpected<int>(""));
+    Expected<int> oN(makeUnexpected(""));
     Expected<int> o0(0);
     Expected<int> o1(1);
 
@@ -445,7 +445,7 @@ TEST(ExpectedTest, usage) {
             if (b) {
                 return 1;
             } else {
-                return makeUnexpected<int>("unexpected");
+                return makeUnexpected("unexpected");
             }
         }
 

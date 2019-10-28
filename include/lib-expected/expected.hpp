@@ -38,6 +38,61 @@ public:
 
 static constexpr InPlaceT InPlace(InPlaceT::Construct::Token);
 
+template <typename T>
+class Unexpected final {
+public:
+    using ValueType = T;
+
+    Unexpected() = delete;
+
+    explicit Unexpected(T error)
+        : mValue(std::move(error)) {}
+
+    const ValueType& value() const& noexcept(false) { return mValue; }
+
+    ValueType& value() & noexcept(false) { return mValue; }
+
+    ValueType&& value() && noexcept(false) { return std::move(mValue); }
+
+private:
+    ValueType mValue;
+};
+
+template <class TError>
+constexpr bool operator==(const Unexpected<TError>& lhs, const Unexpected<TError>& rhs) {
+    return lhs.value() == rhs.value();
+}
+
+template <class TError>
+constexpr bool operator!=(const Unexpected<TError>& lhs, const Unexpected<TError>& rhs) {
+    return lhs.value() != rhs.value();
+}
+
+template <class TError>
+constexpr bool operator<(const Unexpected<TError>& lhs, const Unexpected<TError>& rhs) {
+    return lhs.value() < rhs.value();
+}
+
+template <class TError>
+constexpr bool operator>(const Unexpected<TError>& lhs, const Unexpected<TError>& rhs) {
+    return lhs.value() > rhs.value();
+}
+
+template <class TError>
+constexpr bool operator<=(const Unexpected<TError>& lhs, const Unexpected<TError>& rhs) {
+    return lhs.value() <= rhs.value();
+}
+
+template <class TError>
+constexpr bool operator>=(const Unexpected<TError>& lhs, const Unexpected<TError>& rhs) {
+    return lhs.value() >= rhs.value();
+}
+
+template <typename T>
+Unexpected<typename Detail::ExpectedError<T>::Type> makeUnexpected(T&& error) {
+    return Unexpected<typename Detail::ExpectedError<T>::Type>(std::forward<T>(error));
+}
+
 class BadExpectedAccess : public std::exception {
 public:
     BadExpectedAccess() noexcept = default;
@@ -114,6 +169,7 @@ class Expected final : protected Conditional<std::is_copy_assignable<ReferenceSt
 public:
     static_assert(!std::is_rvalue_reference<T>::value, "Expected cannot be used with r-value references");
     static_assert(!std::is_same<T, InPlaceT>::value, "Expected cannot be used with InPlaceT");
+    static_assert(!std::is_same<T, Unexpected<T>>::value, "Expected cannot be used with Unexpected");
 
     using ValueType = ReferenceStorage<T>;
     using ErrorType = TError;
@@ -281,6 +337,24 @@ public:
                        bool> = false>
     explicit Expected(TOther&& value) noexcept(std::is_nothrow_constructible<ValueType, TOther&&>::value) {
         construct(std::forward<TOther>(value));
+    }
+
+    template <typename TOtherError,
+              EnableIf<std::is_constructible<ErrorType, TOtherError&&>::value &&
+                           std::is_convertible<TOtherError&&, TError>::value,
+                       bool> = true>
+    Expected(Unexpected<TOtherError> unexpected) noexcept(
+        std::is_nothrow_constructible<ErrorType, TOtherError&&>::value) {
+        new ((void*)&mError) TError(std::forward<TOtherError>(unexpected.value()));
+    }
+
+    template <typename TOtherError,
+              EnableIf<std::is_constructible<ErrorType, TOtherError&&>::value &&
+                           !std::is_convertible<TOtherError&&, TError>::value,
+                       bool> = false>
+    explicit Expected(Unexpected<TOtherError> unexpected) noexcept(
+        std::is_nothrow_constructible<ErrorType, TOtherError&&>::value) {
+        new ((void*)&mError) TError(std::forward<TOtherError>(unexpected.value()));
     }
 
     // Destructor
@@ -547,27 +621,9 @@ private:
     };
     bool mHasValue = false;
 
-    struct Error {};
-
-    template <typename TOtherError>
-    Expected(const Error&, TOtherError&& error) {
-        new ((void*)&mError) TError(std::forward<TOtherError>(error));
-    }
-
     template <typename TValueOther, typename TErrorOther>
     friend class Expected;
-
-    template <typename TOther, typename TOtherError>
-    friend Expected<TOther, typename Detail::ExpectedError<TOtherError>::Type>
-    makeUnexpected(TOtherError&& error);
 };
-
-template <typename T, typename TError>
-Expected<T, typename Detail::ExpectedError<TError>::Type> makeUnexpected(TError&& error) {
-    using ErrorType = typename Detail::ExpectedError<TError>::Type;
-    using ExpectedType = Expected<T, ErrorType>;
-    return ExpectedType(typename ExpectedType::Error(), std::forward<TError>(error));
-}
 
 // Compare Expected<T, TError> to Expected<T, TError>
 template <typename T, typename TError>
@@ -659,6 +715,46 @@ constexpr bool operator<=(const Expected<T, TError>& x, const T& v) {
 template <typename T, typename TError>
 constexpr bool operator>=(const T& v, const Expected<T, TError>& x) {
     return bool(x) ? v >= *x : true;
+}
+
+template <class T, class TError>
+constexpr bool operator==(const Expected<T, TError>& x, const Unexpected<TError>& e) {
+    return bool(x) ? false : x.error() == e.value();
+}
+
+template <class T, class TError>
+constexpr bool operator==(const Unexpected<TError>& e, const Expected<T, TError>& x) {
+    return x == e;
+}
+
+template <class T, class TError>
+constexpr bool operator!=(const Expected<T, TError>& x, const Unexpected<TError>& e) {
+    return bool(x) ? true : x.error() != e.value();
+}
+
+template <class T, class TError>
+constexpr bool operator!=(const Unexpected<TError>& e, const Expected<T, TError>& x) {
+    return x != e;
+}
+
+template <class T, class TError>
+constexpr bool operator<(const Expected<T, TError>& x, const Unexpected<TError>& e) {
+    return bool(x) ? false : x.error() < e.value();
+}
+
+template <class T, class TError>
+constexpr bool operator>(const Expected<T, TError>& x, const Unexpected<TError>& e) {
+    return bool(x) ? true : x.error() > e.value();
+}
+
+template <class T, class TError>
+constexpr bool operator<=(const Expected<T, TError>& x, const Unexpected<TError>& e) {
+    return bool(x) ? false : x.error() <= e.value();
+}
+
+template <class T, class TError>
+constexpr bool operator>=(const Expected<T, TError>& x, const Unexpected<TError>& e) {
+    return bool(x) ? true : x.error() >= e.value();
 }
 
 } // namespace libExpected

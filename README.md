@@ -42,7 +42,7 @@ Expected<std::string> getAttribute(const std::string& attributeName) {
     if (attribute != mAttributes.end()) {
         return *attribute;
     }
-    return makeUnexpected<std::string>("The attribute " + attributeName + " doesn't exist");
+    return makeUnexpected("The attribute " + attributeName + " doesn't exist");
 }
 
 int main() {
