@@ -1,0 +1,8 @@
+--language
+c++
+-std=c++11
+-Iinclude
+-Itest/external/googletest/googletest/include
+-Itest/external/googletest/googlemock/include
+-Wall
+-Wextra
