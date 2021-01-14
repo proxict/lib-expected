@@ -110,68 +110,72 @@ namespace swapDetail {
 
 } // namespace swapDetail
 
-template <bool TTest, typename TTrue, typename TFalse>
-using Conditional = typename std::conditional<TTest, TTrue, TFalse>::type;
+namespace detail {
+    template <bool TTest, typename TTrue, typename TFalse>
+    using Conditional = typename std::conditional<TTest, TTrue, TFalse>::type;
 
-template <typename T>
-using IsReference = std::is_reference<T>;
+    template <typename T>
+    using IsReference = std::is_reference<T>;
 
-template <typename T>
-using RemoveReference = typename std::remove_reference<T>::type;
+    template <typename T>
+    using RemoveReference = typename std::remove_reference<T>::type;
 
-template <typename T>
-using ReferenceWrapper = std::reference_wrapper<T>;
+    template <typename T>
+    using ReferenceWrapper = std::reference_wrapper<T>;
 
-template <typename T>
-using ReferenceStorage =
-    Conditional<IsReference<T>::value, ReferenceWrapper<RemoveReference<T>>, RemoveReference<T>>;
+    template <typename T>
+    using ReferenceStorage =
+        Conditional<IsReference<T>::value, ReferenceWrapper<RemoveReference<T>>, RemoveReference<T>>;
 
-template <bool TTest, typename TType = void>
-using EnableIf = typename std::enable_if<TTest, TType>::type;
+    template <bool TTest, typename TType = void>
+    using EnableIf = typename std::enable_if<TTest, TType>::type;
 
-class Copyable {
-public:
-    Copyable() = default;
-    Copyable(const Copyable&) = default;
-    Copyable& operator=(const Copyable&) = default;
-};
+    class Copyable {
+    public:
+        Copyable() = default;
+        Copyable(const Copyable&) = default;
+        Copyable& operator=(const Copyable&) = default;
+    };
 
-class Movable {
-public:
-    Movable() = default;
-    Movable(Movable&&) = default;
-    Movable& operator=(Movable&&) = default;
-};
+    class Movable {
+    public:
+        Movable() = default;
+        Movable(Movable&&) = default;
+        Movable& operator=(Movable&&) = default;
+    };
 
-class Noncopyable {
-public:
-    Noncopyable() = default;
-    Noncopyable(const Noncopyable&) = delete;
-    Noncopyable& operator=(const Noncopyable&) = delete;
-};
+    class Noncopyable {
+    public:
+        Noncopyable() = default;
+        Noncopyable(const Noncopyable&) = delete;
+        Noncopyable& operator=(const Noncopyable&) = delete;
+    };
 
-class Nonmovable {
-public:
-    Nonmovable() = default;
-    Nonmovable(Nonmovable&&) = delete;
-    Nonmovable& operator=(Nonmovable&&) = delete;
-};
+    class Nonmovable {
+    public:
+        Nonmovable() = default;
+        Nonmovable(Nonmovable&&) = delete;
+        Nonmovable& operator=(Nonmovable&&) = delete;
+    };
+
+} // namespace detail
 
 template <typename T, typename TError = std::string>
-class Expected final : protected Conditional<std::is_copy_assignable<ReferenceStorage<T>>::value &&
-                                                 std::is_copy_constructible<ReferenceStorage<T>>::value,
-                                             Copyable,
-                                             Noncopyable>,
-                       protected Conditional<std::is_move_assignable<ReferenceStorage<T>>::value &&
-                                                 std::is_move_constructible<ReferenceStorage<T>>::value,
-                                             Movable,
-                                             Nonmovable> {
+class Expected final
+    : protected detail::Conditional<std::is_copy_assignable<detail::ReferenceStorage<T>>::value &&
+                                        std::is_copy_constructible<detail::ReferenceStorage<T>>::value,
+                                    detail::Copyable,
+                                    detail::Noncopyable>,
+      protected detail::Conditional<std::is_move_assignable<detail::ReferenceStorage<T>>::value &&
+                                        std::is_move_constructible<detail::ReferenceStorage<T>>::value,
+                                    detail::Movable,
+                                    detail::Nonmovable> {
 public:
     static_assert(!std::is_rvalue_reference<T>::value, "Expected cannot be used with r-value references");
     static_assert(!std::is_same<T, InPlaceT>::value, "Expected cannot be used with InPlaceT");
     static_assert(!std::is_same<T, Unexpected<T>>::value, "Expected cannot be used with Unexpected");
 
-    using ValueType = ReferenceStorage<T>;
+    using ValueType = detail::ReferenceStorage<T>;
     using ErrorType = TError;
     using value_type = ValueType; // std traits
     using error_type = ErrorType; // std traits
@@ -233,15 +237,15 @@ public:
     ///
     /// Only available if ValueType is copy-constructible
     /// \note Conditionally explicit
-    template <
-        typename TOther,
-        typename TOtherError,
-        EnableIf<(!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
-                     std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&>::value &&
-                     std::is_constructible<ErrorType, TOtherError&>::value &&
-                     std::is_convertible<const typename Expected<TOther>::ValueType&, ValueType>::value &&
-                     !IsConstructibleOrConvertibleFrom<TOther>(),
-                 bool> = true>
+    template <typename TOther,
+              typename TOtherError,
+              detail::EnableIf<
+                  (!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
+                      std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&>::value &&
+                      std::is_constructible<ErrorType, TOtherError&>::value &&
+                      std::is_convertible<const typename Expected<TOther>::ValueType&, ValueType>::value &&
+                      !IsConstructibleOrConvertibleFrom<TOther>(),
+                  bool> = true>
     Expected(const Expected<TOther, TOtherError>& other) {
         if (other.mHasValue) {
             construct(other.mValue);
@@ -250,15 +254,15 @@ public:
         }
     }
 
-    template <
-        typename TOther,
-        typename TOtherError,
-        EnableIf<(!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
-                     std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&>::value &&
-                     std::is_constructible<ErrorType, TOtherError&>::value &&
-                     !std::is_convertible<const typename Expected<TOther>::ValueType&, ValueType>::value &&
-                     !IsConstructibleOrConvertibleFrom<TOther>(),
-                 bool> = false>
+    template <typename TOther,
+              typename TOtherError,
+              detail::EnableIf<
+                  (!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
+                      std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&>::value &&
+                      std::is_constructible<ErrorType, TOtherError&>::value &&
+                      !std::is_convertible<const typename Expected<TOther>::ValueType&, ValueType>::value &&
+                      !IsConstructibleOrConvertibleFrom<TOther>(),
+                  bool> = false>
     explicit Expected(const Expected<TOther, TOtherError>& other) {
         if (other.mHasValue) {
             construct(other.mValue);
@@ -271,15 +275,15 @@ public:
     ///
     /// Only available if ValueType is move-constructible
     /// \note Conditionally explicit
-    template <
-        typename TOther,
-        typename TOtherError,
-        EnableIf<(!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
-                     std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&&>::value &&
-                     std::is_constructible<ErrorType, TOtherError&&>::value &&
-                     std::is_convertible<const typename Expected<TOther>::ValueType&&, ValueType>::value &&
-                     !IsConstructibleOrConvertibleFrom<TOther>(),
-                 bool> = true>
+    template <typename TOther,
+              typename TOtherError,
+              detail::EnableIf<
+                  (!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
+                      std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&&>::value &&
+                      std::is_constructible<ErrorType, TOtherError&&>::value &&
+                      std::is_convertible<const typename Expected<TOther>::ValueType&&, ValueType>::value &&
+                      !IsConstructibleOrConvertibleFrom<TOther>(),
+                  bool> = true>
     Expected(Expected<TOther, TOtherError>&& other) {
         if (other.mHasValue) {
             construct(std::move(other.mValue));
@@ -288,15 +292,15 @@ public:
         }
     }
 
-    template <
-        typename TOther,
-        typename TOtherError,
-        EnableIf<(!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
-                     std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&&>::value &&
-                     std::is_constructible<ErrorType, TOtherError&&>::value &&
-                     !std::is_convertible<const typename Expected<TOther>::ValueType&&, ValueType>::value &&
-                     !IsConstructibleOrConvertibleFrom<TOther>(),
-                 bool> = false>
+    template <typename TOther,
+              typename TOtherError,
+              detail::EnableIf<
+                  (!std::is_same<ValueType, TOther>::value || !std::is_same<ErrorType, TOtherError>::value) &&
+                      std::is_constructible<ValueType, const typename Expected<TOther>::ValueType&&>::value &&
+                      std::is_constructible<ErrorType, TOtherError&&>::value &&
+                      !std::is_convertible<const typename Expected<TOther>::ValueType&&, ValueType>::value &&
+                      !IsConstructibleOrConvertibleFrom<TOther>(),
+                  bool> = false>
     explicit Expected(Expected<TOther, TOtherError>&& other) {
         if (other.mHasValue) {
             construct(std::move(other.mValue));
@@ -306,7 +310,8 @@ public:
     }
 
     /// In place constructor
-    template <typename... TArgs, typename = EnableIf<std::is_constructible<ValueType, TArgs&&...>::value>>
+    template <typename... TArgs,
+              typename = detail::EnableIf<std::is_constructible<ValueType, TArgs&&...>::value>>
     explicit Expected(InPlaceT,
                       TArgs&&... args) noexcept(std::is_nothrow_constructible<ValueType, TArgs...>::value) {
         construct(std::forward<TArgs>(args)...);
@@ -314,7 +319,7 @@ public:
 
     template <typename TOther,
               typename... TArgs,
-              typename = EnableIf<
+              typename = detail::EnableIf<
                   std::is_constructible<ValueType, std::initializer_list<TOther>&, TArgs&&...>::value>>
     explicit Expected(InPlaceT,
                       std::initializer_list<TOther> list,
@@ -323,35 +328,37 @@ public:
     }
 
     /// Constructor
-    template <typename TOther = ValueType,
-              EnableIf<std::is_constructible<ValueType, TOther&&>::value &&
-                           std::is_convertible<typename Expected<TOther>::ValueType&&, ValueType>::value,
-                       bool> = true>
+    template <
+        typename TOther = ValueType,
+        detail::EnableIf<std::is_constructible<ValueType, TOther&&>::value &&
+                             std::is_convertible<typename Expected<TOther>::ValueType&&, ValueType>::value,
+                         bool> = true>
     Expected(TOther&& value) noexcept(std::is_nothrow_constructible<ValueType, TOther&&>::value) {
         construct(std::forward<TOther>(value));
     }
 
-    template <typename TOther = ValueType,
-              EnableIf<std::is_constructible<ValueType, TOther&&>::value &&
-                           !std::is_convertible<typename Expected<TOther>::ValueType&&, ValueType>::value,
-                       bool> = false>
+    template <
+        typename TOther = ValueType,
+        detail::EnableIf<std::is_constructible<ValueType, TOther&&>::value &&
+                             !std::is_convertible<typename Expected<TOther>::ValueType&&, ValueType>::value,
+                         bool> = false>
     explicit Expected(TOther&& value) noexcept(std::is_nothrow_constructible<ValueType, TOther&&>::value) {
         construct(std::forward<TOther>(value));
     }
 
     template <typename TOtherError,
-              EnableIf<std::is_constructible<ErrorType, TOtherError&&>::value &&
-                           std::is_convertible<TOtherError&&, TError>::value,
-                       bool> = true>
+              detail::EnableIf<std::is_constructible<ErrorType, TOtherError&&>::value &&
+                                   std::is_convertible<TOtherError&&, TError>::value,
+                               bool> = true>
     Expected(Unexpected<TOtherError> unexpected) noexcept(
         std::is_nothrow_constructible<ErrorType, TOtherError&&>::value) {
         new ((void*)&mError) TError(std::forward<TOtherError>(unexpected.value()));
     }
 
     template <typename TOtherError,
-              EnableIf<std::is_constructible<ErrorType, TOtherError&&>::value &&
-                           !std::is_convertible<TOtherError&&, TError>::value,
-                       bool> = false>
+              detail::EnableIf<std::is_constructible<ErrorType, TOtherError&&>::value &&
+                                   !std::is_convertible<TOtherError&&, TError>::value,
+                               bool> = false>
     explicit Expected(Unexpected<TOtherError> unexpected) noexcept(
         std::is_nothrow_constructible<ErrorType, TOtherError&&>::value) {
         new ((void*)&mError) TError(std::forward<TOtherError>(unexpected.value()));
@@ -402,12 +409,12 @@ public:
     }
 
     template <typename TOther = ValueType>
-    EnableIf<!std::is_same<Expected<TRaw>, typename std::decay<TOther>::type>::value &&
-                 std::is_constructible<ValueType, TOther>::value &&
-                 !(std::is_scalar<ValueType>::value &&
-                   std::is_same<ValueType, typename std::decay<TOther>::type>::value) &&
-                 std::is_assignable<ValueType&, TOther>::value,
-             Expected&>
+    detail::EnableIf<!std::is_same<Expected<TRaw>, typename std::decay<TOther>::type>::value &&
+                         std::is_constructible<ValueType, TOther>::value &&
+                         !(std::is_scalar<ValueType>::value &&
+                           std::is_same<ValueType, typename std::decay<TOther>::type>::value) &&
+                         std::is_assignable<ValueType&, TOther>::value,
+                     Expected&>
     operator=(TOther&& value) noexcept(std::is_nothrow_constructible<ValueType, TOther>::value) {
         if (mHasValue) {
             mValue = std::forward<TOther>(value);
@@ -418,13 +425,13 @@ public:
     }
 
     template <typename TOther, typename TOtherError>
-    EnableIf<(!std::is_same<TOther, TRaw>::value || !std::is_same<ErrorType, TOtherError>::value) &&
-                 std::is_constructible<ValueType, const TOther&>::value &&
-                 std::is_constructible<ErrorType, const TOtherError&>::value &&
-                 std::is_assignable<ValueType&, TOther>::value &&
-                 std::is_assignable<ErrorType&, TOtherError>::value &&
-                 !IsConstructibleOrConvertibleFrom<TOther>() && !IsAssignableFrom<TOther>(),
-             Expected&>
+    detail::EnableIf<(!std::is_same<TOther, TRaw>::value || !std::is_same<ErrorType, TOtherError>::value) &&
+                         std::is_constructible<ValueType, const TOther&>::value &&
+                         std::is_constructible<ErrorType, const TOtherError&>::value &&
+                         std::is_assignable<ValueType&, TOther>::value &&
+                         std::is_assignable<ErrorType&, TOtherError>::value &&
+                         !IsConstructibleOrConvertibleFrom<TOther>() && !IsAssignableFrom<TOther>(),
+                     Expected&>
     operator=(const Expected<TOther, TOtherError>& other) {
         if (mHasValue && other.mHasValue) {
             mValue = other.mValue;
@@ -442,11 +449,11 @@ public:
     }
 
     template <typename TOther, typename TOtherError>
-    EnableIf<(!std::is_same<TOther, TRaw>::value || !std::is_same<ErrorType, TOtherError>::value) &&
-                 std::is_constructible<ValueType, TOther>::value &&
-                 std::is_assignable<ValueType&, TOther>::value &&
-                 !IsConstructibleOrConvertibleFrom<TOther>() && !IsAssignableFrom<TOther>(),
-             Expected&>
+    detail::EnableIf<(!std::is_same<TOther, TRaw>::value || !std::is_same<ErrorType, TOtherError>::value) &&
+                         std::is_constructible<ValueType, TOther>::value &&
+                         std::is_assignable<ValueType&, TOther>::value &&
+                         !IsConstructibleOrConvertibleFrom<TOther>() && !IsAssignableFrom<TOther>(),
+                     Expected&>
     operator=(Expected<TOther>&& other) noexcept(std::is_nothrow_move_constructible<ValueType>::value&&
                                                      std::is_nothrow_move_assignable<ValueType>::value) {
         if (mHasValue && other.mHasValue) {
@@ -465,7 +472,8 @@ public:
     }
 
     // Modifiers
-    template <typename... TArgs, typename = EnableIf<std::is_constructible<ValueType, TArgs...>::value>>
+    template <typename... TArgs,
+              typename = detail::EnableIf<std::is_constructible<ValueType, TArgs...>::value>>
     ValueType& emplace(TArgs&&... args) noexcept(std::is_nothrow_constructible<ValueType, TArgs...>::value) {
         reset();
         construct(std::forward<TArgs>(args)...);
@@ -474,7 +482,7 @@ public:
 
     template <typename TOther,
               typename... TArgs,
-              typename = EnableIf<
+              typename = detail::EnableIf<
                   std::is_constructible<ValueType, std::initializer_list<TOther>&, TArgs&&...>::value>>
     ValueType& emplace(std::initializer_list<TOther> list,
                        TArgs&&... args) noexcept(std::is_nothrow_constructible<ValueType, TArgs...>::value) {
@@ -589,7 +597,7 @@ public:
 
     template <typename TOther>
     auto valueOr(TOther&& value) const noexcept(std::is_nothrow_constructible<TRaw, TOther>::value)
-        -> EnableIf<std::is_constructible<TRaw, TOther>::value, TRaw> {
+        -> detail::EnableIf<std::is_constructible<TRaw, TOther>::value, TRaw> {
         return mHasValue ? mValue : static_cast<TRaw>(std::forward<TOther>(value));
     }
 
