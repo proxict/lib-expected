@@ -1,4 +1,4 @@
-![GitHub](https://img.shields.io/github/license/proxict/lib-expected)
+![GitHub](https://img.shields.io/github/license/proxict/lib-expected) ![TravisCI](https://travis-ci.org/proxict/lib-expected.svg?branch=master)
 
 lib-expected
 ------------
