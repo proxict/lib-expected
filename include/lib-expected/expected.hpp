@@ -161,15 +161,7 @@ namespace detail {
 } // namespace detail
 
 template <typename T, typename TError = std::string>
-class Expected final
-    : protected detail::Conditional<std::is_copy_assignable<T>::value &&
-                                        std::is_copy_constructible<T>::value,
-                                    detail::Copyable,
-                                    detail::Noncopyable>,
-      protected detail::Conditional<std::is_move_assignable<T>::value &&
-                                        std::is_move_constructible<T>::value,
-                                    detail::Movable,
-                                    detail::Nonmovable> {
+class Expected final {
 public:
     static_assert(!std::is_rvalue_reference<T>::value, "Expected cannot be used with r-value references");
     static_assert(!std::is_same<T, InPlaceT>::value, "Expected cannot be used with InPlaceT");
@@ -631,6 +623,16 @@ private:
 
     template <typename TValueOther, typename TErrorOther>
     friend class Expected;
+
+    detail::Conditional<std::is_copy_assignable<T>::value && std::is_copy_constructible<T>::value,
+                        detail::Copyable,
+                        detail::Noncopyable>
+        mCopyController;
+
+    detail::Conditional<std::is_move_assignable<T>::value && std::is_move_constructible<T>::value,
+                        detail::Movable,
+                        detail::Nonmovable>
+        mMoveController;
 };
 
 // Compare Expected<T, TError> to Expected<T, TError>
