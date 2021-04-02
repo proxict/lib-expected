@@ -16,12 +16,12 @@ namespace Detail {
         using Type = typename std::decay<TOtherError>::type;
     };
 
-    template <int TSize>
+    template <std::size_t TSize>
     struct ExpectedError<const char (&)[TSize]> {
         using Type = std::string;
     };
 
-    template <int TSize>
+    template <std::size_t TSize>
     struct ExpectedError<const wchar_t (&)[TSize]> {
         using Type = std::wstring;
     };
@@ -352,7 +352,7 @@ public:
                                bool> = true>
     Expected(Unexpected<TOtherError> unexpected) noexcept(
         std::is_nothrow_constructible<ErrorType, TOtherError&&>::value) {
-        new ((void*)&mError) TError(std::forward<TOtherError>(unexpected.value()));
+        new (reinterpret_cast<void*>(&mError)) TError(std::forward<TOtherError>(unexpected.value()));
     }
 
     template <typename TOtherError,
@@ -361,7 +361,7 @@ public:
                                bool> = false>
     explicit Expected(Unexpected<TOtherError> unexpected) noexcept(
         std::is_nothrow_constructible<ErrorType, TOtherError&&>::value) {
-        new ((void*)&mError) TError(std::forward<TOtherError>(unexpected.value()));
+        new (reinterpret_cast<void*>(&mError)) TError(std::forward<TOtherError>(unexpected.value()));
     }
 
     // Destructor
@@ -604,13 +604,13 @@ public:
 private:
     template <typename... TArgs>
     void construct(TArgs&&... args) noexcept(std::is_nothrow_constructible<ValueType, TArgs...>::value) {
-        new ((void*)&mValue) ValueType(std::forward<TArgs>(args)...);
+        new (reinterpret_cast<void*>(&mValue)) ValueType(std::forward<TArgs>(args)...);
         mHasValue = true;
     }
 
     template <typename... TArgs>
     void constructError(TArgs&&... args) noexcept(std::is_nothrow_constructible<ErrorType, TArgs...>::value) {
-        new ((void*)&mError) ErrorType(std::forward<TArgs>(args)...);
+        new (reinterpret_cast<void*>(&mError)) ErrorType(std::forward<TArgs>(args)...);
         mHasValue = false;
     }
 

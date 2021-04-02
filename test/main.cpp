@@ -239,10 +239,10 @@ TEST(ExpectedTest, convertingMoveCtor) {
 
 TEST(ExpectedTest, inPlaceCtor) {
     struct S {
-        S(int a, int b, std::string str)
-            : a(a)
-            , b(b)
-            , str(std::move(str)) {}
+        S(int a_, int b_, std::string str_)
+            : a(a_)
+            , b(b_)
+            , str(std::move(str_)) {}
 
         S(const S&) = delete;
         S& operator=(const S&) = delete;
