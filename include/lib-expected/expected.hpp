@@ -162,12 +162,12 @@ namespace detail {
 
 template <typename T, typename TError = std::string>
 class Expected final
-    : protected detail::Conditional<std::is_copy_assignable<detail::ReferenceStorage<T>>::value &&
-                                        std::is_copy_constructible<detail::ReferenceStorage<T>>::value,
+    : protected detail::Conditional<std::is_copy_assignable<T>::value &&
+                                        std::is_copy_constructible<T>::value,
                                     detail::Copyable,
                                     detail::Noncopyable>,
-      protected detail::Conditional<std::is_move_assignable<detail::ReferenceStorage<T>>::value &&
-                                        std::is_move_constructible<detail::ReferenceStorage<T>>::value,
+      protected detail::Conditional<std::is_move_assignable<T>::value &&
+                                        std::is_move_constructible<T>::value,
                                     detail::Movable,
                                     detail::Nonmovable> {
 public:
