@@ -1,39 +1,37 @@
-if (NOT TARGET gmock AND NOT TARGET gtest)
-    add_subdirectory(external/googletest)
-endif()
-
+cmake_minimum_required(VERSION 3.14)
 add_executable(unittests
     main.cpp
-)
-
-set(COMPILER_WARNINGS
-    -Wall
-    -Werror
-    -Wextra # reasonable and standard
-    -Wshadow # warn the user if a variable declaration shadows one from a parent context
-    -Wnon-virtual-dtor # warn the user if a class with virtual functions has a non-virtual destructor. This helps
-                       # catch hard to track down memory errors
-    -Wold-style-cast # warn for c-style casts
-    -Wcast-align # warn for potential performance problem casts
-    -Wunused # warn on anything being unused
-    -Woverloaded-virtual # warn if you overload (not override) a virtual function
-    -Wpedantic # warn if non-standard C++ is used
-    -Wconversion # warn on type conversions that may lose data
-    -Wsign-conversion # warn on sign conversions
-    -Wdouble-promotion # warn if float is implicit promoted to double
-    -Wformat=2 # warn on security issues around functions that format output (ie printf)
-    -Wlogical-op # warn about logical operations being used where bitwise were probably wanted
-    -Wuseless-cast # warn if you perform a cast to the same type
 )
 
 set_property(TARGET unittests PROPERTY CXX_STANDARD 11)
 set_property(TARGET unittests PROPERTY CXX_STANDARD_REQUIRED TRUE)
 set_property(TARGET unittests PROPERTY CXX_EXTENSIONS OFF)
 
-target_compile_options(unittests PRIVATE ${COMPILER_WARNINGS})
+target_compile_options(unittests
+    PRIVATE -Wall -Wextra -Wpedantic --coverage
+)
+target_link_options(unittests
+    PRIVATE --coverage
+)
+
+# GoogleTest
+include(FetchContent)
+FetchContent_Declare(googletest
+  URL https://github.com/google/googletest/archive/master.zip
+)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 target_link_libraries(unittests
     PRIVATE lib-expected
     PRIVATE gmock
     PRIVATE gtest
 )
+
+add_custom_target(coverage
+    COMMAND ${CMAKE_SOURCE_DIR}/test/coverage.sh ${CMAKE_SOURCE_DIR}/test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+add_dependencies(coverage unittests)
+add_test(NAME unit-tests COMMAND unittests)
